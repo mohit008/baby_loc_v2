@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="50dp"
+    android:layout_height="match_parent">
+
+
+    <RelativeLayout
+        android:id="@+id/rlNotificationMain"
+        android:layout_width="35dp"
+        android:layout_height="35dp"
+        android:layout_centerInParent="true"
+        android:visibility="visible">
+        <baby.watching.view.MyProgressView
+            android:id="@+id/arc_one"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_centerInParent="true"
+            android:progress="100" />
+        <ImageView
+            android:id="@+id/noti_icon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_centerInParent="true" />
+
+        <RelativeLayout
+            android:id="@+id/rlBadge"
+            android:layout_width="15dp"
+            android:layout_height="15dp"
+            android:layout_alignBottom="@+id/arc_one"
+            android:layout_alignParentRight="true"
+            android:background="@drawable/circular"
+            android:visibility="invisible"
+            android:layout_marginTop="15dp">
+
+            <TextView
+                android:id="@+id/tvBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:layout_margin="2dp"
+                android:text=""
+                android:textColor="@color/white"
+                android:textSize="10sp" />
+        </RelativeLayout>
+    </RelativeLayout>
+</RelativeLayout>
