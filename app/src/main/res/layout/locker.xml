@@ -47,7 +47,6 @@
                     android:textColor="@color/white"
                     android:textSize="60sp" />
 
-
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
@@ -69,15 +68,11 @@
                             android:id="@+id/date"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:fontFamily="@font/opensans_light"
                             android:gravity="center_horizontal"
                             android:text="sdasdasf ,  01/12/2017"
-                            android:textColor="@color/text_blue"
+                            android:textColor="@color/progress_bar_color"
                             android:textSize="12sp" />
-
-
                     </LinearLayout>
-
 
                     <LinearLayout
                         android:id="@+id/llWeather"
@@ -85,14 +80,16 @@
                         android:layout_height="0dp"
                         android:layout_weight=".75"
                         android:orientation="horizontal"
-                        android:weightSum="1"
-                        android:visibility="gone">
+                        android:visibility="gone"
+                        android:weightSum="1">
+
                         <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="match_parent"
                             android:layout_weight=".5"
                             android:orientation="vertical"
                             android:weightSum="1">
+
                             <TextView
                                 android:id="@+id/tvTemp"
                                 android:layout_width="match_parent"
@@ -102,16 +99,17 @@
                                 android:text="1243"
                                 android:textColor="@android:color/white"
                                 android:textSize="17sp" />
+
                             <TextView
                                 android:id="@+id/tvTempText"
                                 android:layout_width="match_parent"
                                 android:layout_height="0dp"
-                                android:gravity="right|center_vertical"
-                                android:textAlignment="inherit"
-                                android:text="adsadsasasdsadsa adasa"
                                 android:layout_weight=".5"
+                                android:gravity="right|center_vertical"
+                                android:text="adsadsasasdsadsa adasa"
+                                android:textAlignment="inherit"
                                 android:textColor="@color/white"
-                                android:textSize="10sp"/>
+                                android:textSize="10sp" />
                         </LinearLayout>
 
                         <LinearLayout
@@ -127,19 +125,15 @@
                                 android:layout_marginLeft="10dp"
                                 android:scrollbars="none"></WebView>
                         </LinearLayout>
-
                     </LinearLayout>
-
                 </LinearLayout>
-
-
             </LinearLayout>
 
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_gravity="center_horizontal"
-                android:layout_weight=".60"
+                android:layout_weight=".65"
                 android:orientation="vertical"
                 android:weightSum="1">
 
@@ -147,18 +141,16 @@
                     android:id="@+id/rvNotification"
                     android:layout_width="wrap_content"
                     android:layout_height="0dp"
+                    android:layout_marginRight="10dp"
                     android:layout_weight=".5" />
 
                 <android.support.v7.widget.RecyclerView
-                    android:id="@+id/rvNotificationICon"
+                    android:id="@+id/rvToggle"
                     android:layout_width="wrap_content"
                     android:layout_height="0dp"
-                    android:layout_weight=".5" />
-
+                    android:layout_weight=".5"/>
             </LinearLayout>
-
         </LinearLayout>
-
     </LinearLayout>
 
     <LinearLayout
@@ -171,8 +163,10 @@
         <Button
             android:id="@+id/btnEnableAdmin"
             android:layout_width="200dp"
-            android:layout_height="wrap_content"
-            android:text="Be Admin" />
+            android:layout_height="50dp"
+            android:background="@android:color/transparent"
+            android:text="Be Admin"
+            android:textColor="@android:color/white" />
 
     </LinearLayout>
 </RelativeLayout>

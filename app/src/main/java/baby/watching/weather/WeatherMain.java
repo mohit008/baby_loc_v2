@@ -91,7 +91,8 @@ public class WeatherMain {
             }
             setWeb(des);
             tvTemp.setText(root.getMain().getTemp().toString()+"° C");
-            tvTempText.setText(root.getWeather().get(0).getDescription().toUpperCase().replace(" ", "\n"));
+            tvTempText.setText(root.getWeather().get(0)
+                    .getDescription().toUpperCase().replace(" ", "\n"));
             llWeather.setVisibility(View.VISIBLE);
         }catch (Exception e){
             e.printStackTrace();
@@ -116,14 +117,15 @@ public class WeatherMain {
             wvTempIcon.loadUrl("file:///android_asset/snow_13.html");
             return;
         }
-        if (string.contains("1")) {
-            wvTempIcon.loadUrl("file:///android_asset/sunny_1.html");
-            return;
-        }
         if (string.contains("11")) {
             wvTempIcon.loadUrl("file:///android_asset/thunder_11.html");
             return;
         }
+        if (string.contains("1")) {
+            wvTempIcon.loadUrl("file:///android_asset/sunny_1.html");
+            return;
+        }
+
     }
 
     /**

@@ -1,13 +1,10 @@
 package baby.watching.adapter;
 
-import android.app.ActivityManager;
-import android.app.Dialog;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
-import android.os.Handler;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -16,24 +13,19 @@ import android.view.ViewGroup;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import baby.watching.R;
-import baby.watching.model.open_weather.Sys;
-import baby.watching.util.AppConstants;
+import baby.watching.interfacing.AppInfoDialog;
 import baby.watching.model.NotificationBean;
+import baby.watching.util.AppConstants;
 import baby.watching.view.MyProgressView;
 
-import static baby.watching.util.AppConstants.animateProgress;
+import static baby.watching.util.AppConstants.TOGGLE;
 
 /**
  * Created by mohit.soni on 27-Dec-17.
@@ -46,6 +38,7 @@ public class RecycleAdapter extends RecyclerView.Adapter<RecycleAdapter.ViewHold
 //    HashMap<Integer, Boolean> checkAnimation = new HashMap<>();
     NotificationManager mNotificationManager;
     boolean islongPress = false;
+    AppInfoDialog appInfoDialog;
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         ImageView noti_icon;
@@ -63,9 +56,10 @@ public class RecycleAdapter extends RecyclerView.Adapter<RecycleAdapter.ViewHold
         }
     }
 
-    public RecycleAdapter(Context context, List<NotificationBean> data) {
+    public RecycleAdapter(Context context, List<NotificationBean> data,AppInfoDialog  appInfoDialog) {
         this.data = data;
         this.context = context;
+        this.appInfoDialog = appInfoDialog;
         mNotificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         checkCount(data);
     }
@@ -138,6 +132,7 @@ public class RecycleAdapter extends RecyclerView.Adapter<RecycleAdapter.ViewHold
                    @Override
                    public boolean onLongClick(View v) {
                        islongPress = true;
+                       appInfoDialog.onItemCheck(statusBarNotification,TOGGLE,"");
                        return false;
                    }
                });

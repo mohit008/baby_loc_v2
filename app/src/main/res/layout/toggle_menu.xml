@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?><!-- Create by mohit.soni @  -->
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="70dp"
+    android:layout_height="70dp">
+
+    <ImageView
+        android:id="@+id/ivToggleStatus"
+        android:layout_width="3dp"
+        android:layout_height="3dp"
+        android:layout_centerHorizontal="true"
+        android:background="@drawable/toggle_circular"
+        android:layout_below="@+id/ivToggleIcon"
+        android:visibility="invisible"
+        android:layout_marginTop="4dp"/>
+    <ImageView
+        android:id="@+id/ivToggleIcon"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_centerInParent="true"/>
+
+</RelativeLayout>

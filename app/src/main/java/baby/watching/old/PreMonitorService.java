@@ -107,7 +107,7 @@
 //        displayReceiver = new DisplayReceiver();
 //        registerReceiver(displayReceiver, filter);
 //
-////        startTimerforTopCPU();
+////        startAnimationProcess();
 //        getDescriptionContent();
 //        startForeground();
 //    }
@@ -263,7 +263,7 @@
 //    /**
 //     * start timer for top command
 //     */
-//    public void startTimerforTopCPU() {
+//    public void startAnimationProcess() {
 //        timer = new Timer();
 //        timeTask = new TimerTask() {
 //            @Override

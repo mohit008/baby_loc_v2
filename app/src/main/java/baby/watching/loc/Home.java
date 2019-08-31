@@ -2,10 +2,12 @@ package baby.watching.loc;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.Dialog;
 import android.app.KeyguardManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.admin.DevicePolicyManager;
+import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -13,9 +15,17 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkInfo;
 import android.net.Uri;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
+import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -23,43 +33,61 @@ import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.text.Html;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.WebView;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextClock;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Set;
 
 import baby.watching.R;
 import baby.watching.adapter.RecycleAdapter;
+import baby.watching.adapter.ToggleRecycleAdapter;
 import baby.watching.broad.MonitorService;
 import baby.watching.broad.NotificationWatcher;
+import baby.watching.interfacing.AppInfoDialog;
+import baby.watching.model.BatteryWatcherBean;
+import baby.watching.model.BluetoothWatcherBean;
+import baby.watching.model.MobileDataWatcherBean;
 import baby.watching.model.NotificationBean;
+import baby.watching.model.WifiWatcherBean;
 import baby.watching.util.AppConstants;
 import baby.watching.util.LockscreenUtils;
 import baby.watching.weather.WeatherMain;
 
+import static baby.watching.util.AppConstants.BATTERY;
+import static baby.watching.util.AppConstants.BLUETOOTH;
+import static baby.watching.util.AppConstants.DISABLE;
+import static baby.watching.util.AppConstants.ENABLE;
+import static baby.watching.util.AppConstants.MOBILE;
+import static baby.watching.util.AppConstants.NETWORK;
+import static baby.watching.util.AppConstants.NOTIFICATION;
+import static baby.watching.util.AppConstants.NO_DATA;
 import static baby.watching.util.AppConstants.PERMISSION_REQUESTCODE;
+import static baby.watching.util.AppConstants.STATUS;
+import static baby.watching.util.AppConstants.TOGGLE;
+import static baby.watching.util.AppConstants.TYPE;
+import static baby.watching.util.AppConstants.WIFI;
 
 /**
  * Created by mohit.soni on 11/20/2017.
  */
 
 public class Home extends Activity implements ActivityCompat.OnRequestPermissionsResultCallback,
-        LockscreenUtils.OnLockStatusChangedListener {
+        LockscreenUtils.OnLockStatusChangedListener, AppInfoDialog {
 
-    private static final String TAG = "baby.watching.loc.Home";
+    private static final String TAG = "[baby.watching.loc.Home]";
 
     private boolean granted = true;
     AppConstants constantsLocking = new AppConstants();
@@ -76,7 +104,7 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
 
     public static final int RESULT_ENABLE = 11;
 
-    RecyclerView mRecyclerView;
+    RecyclerView rvNotification, rvToggle;
     RecyclerView.LayoutManager mLayoutManager;
     RecycleAdapter recycleAdapter;
 
@@ -85,6 +113,14 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
 
     ArrayList<NotificationBean> statusBar;
     NotificationWatcher notificationWatcher;
+
+    BroadCastListenerReceiver broadCastListenerReceiver;
+    ToggleRecycleAdapter toggleRecycleAdapter;
+    HashMap<String, Object> toggleData = new HashMap<>();
+
+    private BluetoothAdapter mBluetoothAdapter;
+    boolean isWifiConn = false;
+    boolean isMobileConn = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -122,13 +158,18 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
             }
         }
         if (!haveAccess) {
-            startActivityForResult(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS),PERMISSION_REQUESTCODE);
+            startActivityForResult(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS), PERMISSION_REQUESTCODE);
         }
 
         notificationListenerReceiver = new NotificationListenerReceiver();
         IntentFilter filter = new IntentFilter();
         filter.addAction(AppConstants.NOTIFICATION_RECEIVER);
         registerReceiver(notificationListenerReceiver, filter);
+
+        broadCastListenerReceiver = new BroadCastListenerReceiver();
+        IntentFilter baIntentFilter = new IntentFilter();
+        baIntentFilter.addAction(AppConstants.STATUS_RECEIVER);
+        registerReceiver(broadCastListenerReceiver, baIntentFilter);
 
 //        top_cpu_listener = new TOP_CPU_LISTENER();
 //        IntentFilter top_filter = new IntentFilter();
@@ -152,8 +193,8 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
         startService(new Intent(this, NotificationWatcher.class));
     }
 
-    /** asked for request if API > 22
-     *
+    /**
+     * asked for request if API > 22
      */
     private void request() {
         if (Build.VERSION.SDK_INT > 22) {
@@ -162,7 +203,7 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
                 Intent openSetting = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS);
                 openSetting.setData(Uri.parse("package:" + this.getPackageName()));
                 openSetting.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivityForResult(openSetting,PERMISSION_REQUESTCODE);
+                startActivityForResult(openSetting, PERMISSION_REQUESTCODE);
 
                 //-- auto start app setting
                 String manufacturer = "xiaomi";
@@ -170,7 +211,7 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
                     //this will open auto start screen where user can enable permission for your app
                     Intent intent1 = new Intent();
                     intent1.setComponent(new ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity"));
-                    startActivityForResult(intent1,PERMISSION_REQUESTCODE);
+                    startActivityForResult(intent1, PERMISSION_REQUESTCODE);
                 }
             }
 
@@ -179,7 +220,7 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
             if (!canOverLay) {
                 Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                         Uri.parse("package:" + getApplicationContext().getPackageName()));
-                startActivityForResult(intent,PERMISSION_REQUESTCODE);
+                startActivityForResult(intent, PERMISSION_REQUESTCODE);
             }
 
             // -- permission
@@ -194,7 +235,14 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
                     Manifest.permission.DISABLE_KEYGUARD,
                     Manifest.permission.WAKE_LOCK,
                     Manifest.permission.GET_TASKS,
-                    Manifest.permission.BIND_NOTIFICATION_LISTENER_SERVICE}, PERMISSION_REQUESTCODE);
+                    Manifest.permission.BIND_NOTIFICATION_LISTENER_SERVICE,
+                    Manifest.permission.BLUETOOTH,
+                    Manifest.permission.BLUETOOTH_ADMIN,
+                    Manifest.permission.BLUETOOTH_PRIVILEGED,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+
+            }, PERMISSION_REQUESTCODE);
         }
     }
 
@@ -207,8 +255,8 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
     }
 
 
-    /** set initial variables
-     *
+    /**
+     * set initial variables
      */
     public void setInit() {
         setContentView(R.layout.locker);
@@ -224,9 +272,18 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
         tvTempText = (TextView) findViewById(R.id.tvTempText);
         llWeather = (LinearLayout) findViewById(R.id.llWeather);
 
+        rvNotification = (RecyclerView) findViewById(R.id.rvNotification);
+        rvToggle = (RecyclerView) findViewById(R.id.rvToggle);
+
+        mLayoutManager = new LinearLayoutManager(this, LinearLayout.HORIZONTAL, true);
+        rvNotification.setLayoutManager(mLayoutManager);
+        rvToggle.setLayoutManager(new LinearLayoutManager(this, LinearLayout.HORIZONTAL, true));
+//        rvNotification.setLayoutManager(new GridLayoutManager(this, 3));
+//        rvNotification.setItemAnimator(new DefaultItemAnimator());
+
+        checkBluetooth();
+
         wvTempIcon.setBackgroundColor(Color.TRANSPARENT);
-        date.setTypeface(constantsLocking.getFont(this));
-        clock.setTypeface(constantsLocking.getFont(this));
         clock.setFormat12Hour("KK mm");
 
         clock.setOnClickListener(new View.OnClickListener() {
@@ -236,17 +293,11 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
                 if (granted) {
                     notificationWatcher.onDestroy();
                     unlockButton();
-                }else{
+                } else {
                     request();
                 }
             }
         });
-
-        mRecyclerView = (RecyclerView) findViewById(R.id.rvNotification);
-        mLayoutManager = new LinearLayoutManager(this, LinearLayout.HORIZONTAL, true);
-        mRecyclerView.setLayoutManager(mLayoutManager);
-//        mRecyclerView.setLayoutManager(new GridLayoutManager(this, 3));
-//        mRecyclerView.setItemAnimator(new DefaultItemAnimator());
 
         date.setText(constantsLocking.getNumDate(date));
         date.setOnClickListener(new View.OnClickListener() {
@@ -285,7 +336,7 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
             btnEnableAdmin.setVisibility(View.GONE);
         } else {
             btnEnableAdmin.setVisibility(View.VISIBLE);
-            Toast.makeText(Home.this, "You need to enable the Admin Device Features", Toast.LENGTH_SHORT).show();
+            showToast("You need to enable the Admin Device Features");
         }
 
         //-- unlock screen in case of app get killed by system
@@ -312,6 +363,9 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
     protected void onResume() {
         super.onResume();
         log("onResume");
+//        Intent intent_status = new Intent(AppConstants.NOTIFICATION_STATUS_RECEIVER);
+//        intent_status.putExtra("status", "null");
+//        sendBroadcast(intent_status);
     }
 
     @Override
@@ -331,6 +385,7 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
         super.onStop();
         unlockButton();
     }
+
     /**
      * unregister displayReceiver
      */
@@ -338,6 +393,7 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
     protected void onDestroy() {
         super.onDestroy();
         unregisterReceiver(notificationListenerReceiver);
+        unregisterReceiver(broadCastListenerReceiver);
 //        unregisterReceiver(top_cpu_listener);
         stopService(new Intent(this, NotificationWatcher.class));
         startService(new Intent(this, MonitorService.class));
@@ -362,6 +418,10 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
         Log.i(TAG, msg);
     }
 
+    private void showToast(String msg) {
+        Toast.makeText(this,msg,Toast.LENGTH_SHORT).show();
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         switch (requestCode) {
@@ -372,25 +432,150 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
         }
     }
 
+    @Override
+    public void onItemCheck(Object object, String type, String subType) {
+        boolean display = true;
+        final Dialog dialog = new Dialog(this);
+        dialog.setContentView(R.layout.confirm_exit);
+        dialog.setCancelable(false);
+
+        ImageView ivDialogAppIcon = (ImageView) dialog.findViewById(R.id.ivDialogAppIcon);
+        TextView tvDialogHead = (TextView) dialog.findViewById(R.id.tvDialogHead);
+        Button btDialogKill = (Button) dialog.findViewById(R.id.btDialogKill);
+        Button btDialogOk = (Button) dialog.findViewById(R.id.btDialogOk);
+        if (type.equals(NOTIFICATION)) {
+            NotificationBean bean = (NotificationBean) object;
+            dialog.setTitle(bean.getAppName());
+            try {
+                Drawable applicationIcon = getPackageManager().getApplicationIcon(bean.getPackageName());
+                ivDialogAppIcon.setBackground(applicationIcon);
+            } catch (PackageManager.NameNotFoundException e) {
+                e.printStackTrace();
+            }
+            tvDialogHead.setText(Html.fromHtml(bean.showDetail()));
+            if (bean.getPackageName().equals("android")) {
+                btDialogKill.setVisibility(View.GONE);
+            }
+            btDialogOk.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    dialog.dismiss();
+                }
+            });
+            btDialogKill.setOnClickListener(new View.OnClickListener() {
+
+                @Override
+                public void onClick(View v) {
+                    dialog.dismiss();
+                }
+            });
+        }
+        if (type.equals(TOGGLE)) {
+            if (subType.equals(BATTERY)) {
+                BatteryWatcherBean batteryWatcherBean = (BatteryWatcherBean) toggleData.get(BATTERY);
+                ivDialogAppIcon.setBackgroundResource(R.drawable.battery_full);
+                tvDialogHead.setText(Html.fromHtml(batteryWatcherBean.showDetail()));
+            }
+            if (subType.equals(WIFI)) {
+                WifiWatcherBean wifiWatcherBean = (WifiWatcherBean) toggleData.get(WIFI);
+                ivDialogAppIcon.setBackgroundResource(R.drawable.wifi_4);
+                tvDialogHead.setText(Html.fromHtml(wifiWatcherBean.showDetail()));
+                if(wifiWatcherBean.getStatus().equals(DISABLE)){
+                        display = false;
+                        showToast("Wifi is not active");
+                }
+            }
+            if (subType.equals(MOBILE)) {
+                MobileDataWatcherBean mobileDataWatcherBean = (MobileDataWatcherBean) toggleData.get(MOBILE);
+                ivDialogAppIcon.setBackgroundResource(R.drawable.mobile_data_on);
+                tvDialogHead.setText(Html.fromHtml(mobileDataWatcherBean.showDetail()));
+                if(!mobileDataWatcherBean.getState()){
+                    display = false;
+                    showToast("Mobile data is not active");
+                }
+            }
+            if (subType.equals(BLUETOOTH)) {
+                BluetoothWatcherBean bluetoothWatcherBean = (BluetoothWatcherBean) toggleData.get(BLUETOOTH);
+                ivDialogAppIcon.setBackgroundResource(R.drawable.bluetooth_on);
+                tvDialogHead.setText(Html.fromHtml(bluetoothWatcherBean.showDetail()));
+                if(!bluetoothWatcherBean.getState()){
+                    display = false;
+                    showToast("Bluetooth is not active");
+                }
+            }
+
+            btDialogKill.setVisibility(View.GONE);
+            btDialogOk.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    dialog.dismiss();
+                }
+            });
+        }
+        if(display){
+            dialog.show();
+        }
+    }
+
     /**
      * get event from notification listener class
      */
     class NotificationListenerReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
-            try{
-                if(((String)intent.getExtras().get("status")).equals("all")){
+            try {
+                if (((String) intent.getExtras().get("status")).equals("all")) {
                     statusBar = new ArrayList<>();
                     statusBar = (ArrayList<NotificationBean>) intent.getExtras().get("notificationBeans");
-                    recycleAdapter = new RecycleAdapter(Home.this.getApplicationContext(), statusBar);
-                    mRecyclerView.setAdapter(recycleAdapter);
+                    recycleAdapter = new RecycleAdapter(Home.this.getApplicationContext(), statusBar, Home.this);
+                    rvNotification.setAdapter(recycleAdapter);
                 }
-                if(((String)intent.getExtras().get("status")).equals("new")){
+                if (((String) intent.getExtras().get("status")).equals("new")) {
                     NotificationBean bean = (NotificationBean) intent.getExtras().get("Bean");
-                    recycleAdapter.addBean(bean);
+                    if (recycleAdapter == null) {
+                        Intent intent_status = new Intent(AppConstants.NOTIFICATION_STATUS_RECEIVER);
+                        intent_status.putExtra("status", "null");
+                        sendBroadcast(intent_status);
+                    } else {
+                        recycleAdapter.addBean(bean);
+                    }
                 }
-                mRecyclerView.scrollToPosition(statusBar.size() - 1);
-            }catch (Exception e){
+                rvNotification.scrollToPosition(statusBar.size() - 1);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+
+    /**
+     * get event from battery listener class
+     */
+    class BroadCastListenerReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            try {
+                String type = (String) intent.getExtras().get(TYPE);
+                if (type.equals(BATTERY)) {
+                    BatteryWatcherBean batteryWatcherBean = (BatteryWatcherBean) intent.getExtras().get(STATUS);
+//                    showToast(batteryWatcherBean.toString());
+                    toggleData.put(BATTERY, batteryWatcherBean);
+                    toggleRecycleAdapter.notifyDataSetChanged();
+                }
+                if (type.equals(NETWORK)) {
+                    WifiWatcherBean wifiWatcherBean = (WifiWatcherBean) intent.getExtras().get(STATUS);
+//                    showToast(wifiWatcherBean.toString());
+                    toggleData.put(WIFI, wifiWatcherBean);
+                    toggleData.put(MOBILE, wifiWatcherBean.getMobileDataWatcherBean());
+                    toggleRecycleAdapter.notifyDataSetChanged();
+                }
+                if (type.equals(BLUETOOTH)) {
+                    BluetoothWatcherBean bluetoothWatcherBean = (BluetoothWatcherBean) intent.getExtras().get(STATUS);
+//                    showToast(bluetoothWatcherBean.toString());
+                    toggleData.put(BLUETOOTH, bluetoothWatcherBean);
+                    toggleRecycleAdapter.notifyDataSetChanged();
+                }
+            } catch (Exception e) {
                 e.printStackTrace();
             }
 
@@ -404,13 +589,14 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
 //        @Override
 //        public void onReceive(Context context, Intent intent) {
 //            if (intent.getAction().equals(AppConstants.TOP_CPU_DATA)) {
-////                Toast.makeText(Home.this,(String)intent
-////                        .getExtras().getString("value"),Toast.LENGTH_LONG).show();
+//    showToast((String)intent
+//                        .getExtras().getString("value"));
 //            }
 //        }
 //    }
 
-    /** init notification with dummy one
+    /**
+     * init notification with dummy one
      *
      * @param id
      */
@@ -457,7 +643,8 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
         mKL.reenableKeyguard();
     }
 
-    /** Handle button clicks
+    /**
+     * Handle button clicks
      *
      * @param keyCode
      * @param event
@@ -481,7 +668,8 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
 
     }
 
-    /** handle the key press events here itself
+    /**
+     * handle the key press events here itself
      *
      * @param event
      * @return
@@ -507,7 +695,8 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
         LockscreenUtils.unlock();
     }
 
-    /** unlock device when home button is successfully unlocked
+    /**
+     * unlock device when home button is successfully unlocked
      *
      * @param isLocked
      */
@@ -520,5 +709,121 @@ public class Home extends Activity implements ActivityCompat.OnRequestPermission
 
     private void unlockDevice() {
         finish();
+    }
+
+    /**
+     * check bluetooth status
+     */
+    public void checkBluetooth() {
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        BluetoothWatcherBean bluetoothWatcherBean = new BluetoothWatcherBean();
+        bluetoothWatcherBean.setName("");
+        bluetoothWatcherBean.setMac("");
+        if (mBluetoothAdapter.isEnabled()) {
+            bluetoothWatcherBean.setState(true);
+        } else {
+            bluetoothWatcherBean.setState(false);
+        }
+
+        toggleData.put(BLUETOOTH, bluetoothWatcherBean);
+
+        getNetwork();
+    }
+
+    /**
+     * get current battery toggle
+     */
+    public void getBattery() {
+        BatteryWatcherBean batteryWatcherBean = new BatteryWatcherBean();
+        BatteryManager batteryManager = (BatteryManager) getSystemService(BATTERY_SERVICE);
+        try {
+            int level = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+            batteryWatcherBean.setLevel(level);
+            batteryWatcherBean.setTemp(0);
+            batteryWatcherBean.setVoltage(0);
+            batteryWatcherBean.setStatus(0);
+            batteryWatcherBean.setBattery_status(NO_DATA);
+            batteryWatcherBean.setCharge_plug(0);
+            batteryWatcherBean.setPower_lugged(false);
+            batteryWatcherBean.setBattery_power_source(NO_DATA);
+            batteryWatcherBean.setBattery_health_int(0);
+            batteryWatcherBean.setBattery_health(NO_DATA);
+        } catch (Exception e) {
+            log("Battery Info Error");
+        }
+        toggleData.put(BATTERY, batteryWatcherBean);
+
+
+        toggleRecycleAdapter = new ToggleRecycleAdapter(this, toggleData, this);
+        rvToggle.setAdapter(toggleRecycleAdapter);
+
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                toggleRecycleAdapter.updateTag(0);
+            }
+        }, 1000);
+    }
+
+    /**
+     * get current network toggle
+     */
+    public void getNetwork() {
+        ConnectivityManager connMgr =
+                (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        for (Network network : connMgr.getAllNetworks()) {
+            NetworkInfo networkInfo = connMgr.getNetworkInfo(network);
+            if (networkInfo.getType() == ConnectivityManager.TYPE_WIFI) {
+                isWifiConn = networkInfo.isConnected();
+            }
+            if (networkInfo.getType() == ConnectivityManager.TYPE_MOBILE) {
+                isMobileConn = networkInfo.isConnected();
+            }
+        }
+        WifiWatcherBean wifiWatcherBean = new WifiWatcherBean();
+        MobileDataWatcherBean mobileDataWatcherBean = new MobileDataWatcherBean();
+        if (isWifiConn) {
+            WifiManager wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+            if (wifiManager.getWifiState() == WifiManager.WIFI_STATE_ENABLED) {
+                WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+                wifiWatcherBean.setSsid(wifiInfo.getSSID());
+                wifiWatcherBean.setBssid(wifiInfo.getBSSID());
+                wifiWatcherBean.setMac(wifiInfo.getMacAddress());
+                wifiWatcherBean.setSupplicant_state("");
+                wifiWatcherBean.setRssi(wifiInfo.getRssi());
+                wifiWatcherBean.setLink_speed(wifiInfo.getLinkSpeed());
+                wifiWatcherBean.setFrequency(wifiInfo.getFrequency());
+                wifiWatcherBean.setNet_id(wifiInfo.getNetworkId());
+                wifiWatcherBean.setMetered_hint("");
+                wifiWatcherBean.setScore("");
+                wifiWatcherBean.setIpAddress(wifiInfo.getIpAddress());
+                wifiWatcherBean.setStatus(ENABLE);
+            }
+        }
+        if (!isWifiConn) {
+            wifiWatcherBean.setStatus(DISABLE);
+        }
+        if (isMobileConn) {
+            NetworkInfo networkInfo = connMgr.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
+            log(networkInfo.toString());
+            mobileDataWatcherBean.setType(networkInfo.getTypeName());
+            mobileDataWatcherBean.setState(isWifiConn ? true : isMobileConn);
+            mobileDataWatcherBean.setReason(networkInfo.getReason());
+            mobileDataWatcherBean.setExtra(networkInfo.getExtraInfo());
+            mobileDataWatcherBean.setSub_type_name(networkInfo.getSubtypeName());
+            mobileDataWatcherBean.setSub_type(networkInfo.getSubtype());
+            mobileDataWatcherBean.setFail_over(networkInfo.isFailover());
+            mobileDataWatcherBean.setAvailable(networkInfo.isAvailable());
+            mobileDataWatcherBean.setRoaming(networkInfo.isRoaming());
+        }
+        if (!isMobileConn) {
+            mobileDataWatcherBean.setState(false);
+        }
+        wifiWatcherBean.setMobileDataWatcherBean(mobileDataWatcherBean);
+        toggleData.put(MOBILE, mobileDataWatcherBean);
+        toggleData.put(WIFI, wifiWatcherBean);
+
+        getBattery();
     }
 }

@@ -16,6 +16,12 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.ACTION_MANAGE_OVERLAY_PERMISSION" />
+    <uses-permission android:name="android.permission.BATTERY_STATS"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE"/>
 
     <!-- call -->
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS"/>
@@ -25,6 +31,15 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE"/>e
     <uses-permission android:name="android.permission.PROCESS_OUTGOING_CALLS"/>
 
+    <!--bluetooth-->
+    <uses-permission android:name="android.permission.BLUETOOTH"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_PRIVILEGED"/>
+
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+
+
     <application
         android:name=".loc.BabyApp"
         android:allowBackup="true"
@@ -33,7 +48,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme1">
         <activity android:name=".loc.Home"
-            android:theme="@style/AppTheme"
+            android:theme="@style/AppTheme1"
             android:excludeFromRecents="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -72,11 +87,18 @@
                 <action android:name="android.intent.action.SCREEN_ON" />
             </intent-filter>
             <intent-filter>
-                <action android:name="android.intent.action.PHONE_STATE" />
+                <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
             </intent-filter>
             <intent-filter>
-                <action android:name="android.intent.action.NEW_OUTGOING_CALL" />
+                <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.BATTERY_CHANGED" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.bluetooth.adapter.action.STATE_CHANGED"/>
+            </intent-filter>
+
         </receiver>
     </application>
 </manifest>

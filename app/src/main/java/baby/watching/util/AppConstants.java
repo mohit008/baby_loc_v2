@@ -35,10 +35,25 @@ import static android.content.Context.DEVICE_POLICY_SERVICE;
 
 public class AppConstants {
     public static final String TAG = "baby.watching.util.AppConstants";
-    public static final String CALL_CUSTOM = "call_custom";
+    //    public static final String CALL_CUSTOM = "call_custom";
     public static final String NOTIFICATION_RECEIVER = "notification_receiver";
-    public static final String NOTIFICATION_LISTENER_RECEIVER = "notification_listener_receiver";
+    public static final String NOTIFICATION_STATUS_RECEIVER = "notification_status_receiver";
+    public static final String STATUS_RECEIVER = "status_receiver";
     public static final String TOP_CPU_DATA = "top_cpu_data";
+    public static final String TYPE = "type";
+    public static final String STATUS = "status";
+    public static final String NO_DATA = "....";
+
+    public static final String BATTERY = "battery";
+    public static final String WIFI = "wifi";
+    public static final String MOBILE = "mobile";
+    public static final String BLUETOOTH = "bluetooth";
+    public static final String NETWORK = "network";
+    public static final String NOTIFICATION = "notification";
+    public static final String TOGGLE = "toggle";
+
+    public static final String ENABLE = "enable";
+    public static final String DISABLE = "disable";
     public static String ROOT_PACKAGE = "";
 
     //permissions
@@ -296,8 +311,8 @@ public class AppConstants {
         ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
         for (Class<?> clas : cls) {
             List<ActivityManager.RunningServiceInfo> serviceInfos = manager.getRunningServices(Integer.MAX_VALUE);
-            if(serviceInfos.size() > 0){
-                for(int i=0;i<serviceInfos.size();i++){
+            if (serviceInfos.size() > 0) {
+                for (int i = 0; i < serviceInfos.size(); i++) {
                     if (clas.getName().equals(serviceInfos.get(i).service.getClassName())) {
                         SERVICE_CLASS.put(clas, true);
                         continue;
@@ -305,7 +320,7 @@ public class AppConstants {
                         SERVICE_CLASS.put(clas, false);
                     }
                 }
-            }else{
+            } else {
                 SERVICE_CLASS.put(clas, false);
             }
         }
