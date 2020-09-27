@@ -12,7 +12,6 @@ import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Handler;
 import android.provider.Settings;
-import android.support.annotation.NonNull;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -127,7 +126,6 @@ public class AppConstants {
      *
      * @return date format
      */
-    @NonNull
     public DateFormat getCal() {
 //        DateFormat dateFormat =  new SimpleDateFormat("yyyy/MM/dd HH:mm:ss EEEE");
 //        Log.i(TAG,dateFormat.format(new Date()).split(" ")[2]);
@@ -139,7 +137,6 @@ public class AppConstants {
      *
      * @return date format
      */
-    @NonNull
     public String[] getDate() {
         return getCal().format(new Date()).split(" ")[0].split("/");
     }
@@ -149,7 +146,6 @@ public class AppConstants {
      *
      * @return time format
      */
-    @NonNull
     public String[] getTime() {
         return getCal().format(new Date()).split(" ")[1].split(":");
     }
@@ -159,7 +155,6 @@ public class AppConstants {
      *
      * @return time format
      */
-    @NonNull
     public String[] getDay() {
         return getCal().format(new Date()).split(" ")[2].split(":");
     }
